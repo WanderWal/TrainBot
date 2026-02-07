@@ -1,0 +1,16 @@
+{
+  "name": "discord-ticket-bot",
+  "version": "1.0.0",
+  "description": "A Discord bot with ticket system for character submissions",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "keywords": ["discord", "bot", "ticket"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1"
+  }
+}
