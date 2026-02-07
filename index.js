@@ -1,5 +1,14 @@
+require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, PermissionFlagsBits } = require('discord.js');
-const config = require('./config.json');
+
+const config = {
+    token: process.env.DISCORD_TOKEN,
+    clientId: process.env.CLIENT_ID,
+    guildId: process.env.GUILD_ID,
+    ticketChannelId: process.env.TICKET_CHANNEL_ID,
+    supportRoleId: process.env.SUPPORT_ROLE_ID,
+    ticketCategoryId: process.env.TICKET_CATEGORY_ID
+};
 
 const client = new Client({
     intents: [

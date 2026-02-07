@@ -7,10 +7,15 @@
     "start": "node index.js",
     "dev": "node index.js"
   },
-  "keywords": ["discord", "bot", "ticket"],
+  "keywords": [
+    "discord",
+    "bot",
+    "ticket"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.14.1"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.6.1"
   }
 }
