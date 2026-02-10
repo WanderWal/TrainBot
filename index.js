@@ -97,6 +97,12 @@ async function handleTicketCommand(interaction) {
                 emoji: '💡'
             },
             {
+                label: 'Forge Access',
+                description: 'Get help with forge access',
+                value: 'forge_access',
+                emoji: '🔨'
+            },
+            {
                 label: 'Character Creation',
                 description: 'Get help creating your character',
                 value: 'character_creation',
