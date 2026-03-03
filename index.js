@@ -1,5 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, PermissionFlagsBits } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
 const config = {
     token: process.env.DISCORD_TOKEN,
@@ -7,7 +9,9 @@ const config = {
     guildId: process.env.GUILD_ID,
     ticketChannelId: process.env.TICKET_CHANNEL_ID,
     supportRoleId: process.env.SUPPORT_ROLE_ID,
-    ticketCategoryId: process.env.TICKET_CATEGORY_ID
+    ticketCategoryId: process.env.TICKET_CATEGORY_ID,
+    foundryApiUrl: process.env.FOUNDRY_API_URL || 'https://druskenvald.eu.forge-vtt.com',
+    foundryApiKey: process.env.FOUNDRY_API_KEY
 };
 
 const client = new Client({
@@ -20,6 +24,33 @@ const client = new Client({
 
 // Store active tickets
 const activeTickets = new Map();
+
+// Store character-user links
+const characterLinksFile = path.join(__dirname, 'character-links.json');
+const characterLinks = loadCharacterLinks();
+
+// Load character links from file
+function loadCharacterLinks() {
+    try {
+        if (fs.existsSync(characterLinksFile)) {
+            const data = fs.readFileSync(characterLinksFile, 'utf8');
+            return new Map(JSON.parse(data));
+        }
+    } catch (error) {
+        console.error('Error loading character links:', error);
+    }
+    return new Map();
+}
+
+// Save character links to file
+function saveCharacterLinks() {
+    try {
+        const data = JSON.stringify([...characterLinks]);
+        fs.writeFileSync(characterLinksFile, data, 'utf8');
+    } catch (error) {
+        console.error('Error saving character links:', error);
+    }
+}
 
 client.once('clientReady', async () => {
     console.log(`✅ Bot logged in as ${client.user.tag}`);
@@ -35,6 +66,46 @@ client.once('clientReady', async () => {
             name: 'close',
             description: 'Close the current ticket',
             options: []
+        },
+        {
+            name: 'linkcharacter',
+            description: 'Link a FoundryVTT character to your Discord account',
+            options: [
+                {
+                    name: 'character_id',
+                    type: 3, // STRING
+                    description: 'The FoundryVTT character ID',
+                    required: true
+                },
+                {
+                    name: 'character_name',
+                    type: 3, // STRING
+                    description: 'The character name (for display)',
+                    required: true
+                }
+            ]
+        },
+        {
+            name: 'unlinkcharacter',
+            description: 'Unlink your FoundryVTT character',
+            options: []
+        },
+        {
+            name: 'mycharacter',
+            description: 'View your linked FoundryVTT character',
+            options: []
+        },
+        {
+            name: 'viewcharacter',
+            description: 'View another user\'s linked character',
+            options: [
+                {
+                    name: 'user',
+                    type: 6, // USER
+                    description: 'The user whose character you want to view',
+                    required: true
+                }
+            ]
         }
     ];
 
@@ -63,6 +134,14 @@ client.on('interactionCreate', async interaction => {
             await handleTicketCommand(interaction);
         } else if (commandName === 'close') {
             await handleCloseCommand(interaction);
+        } else if (commandName === 'linkcharacter') {
+            await handleLinkCharacterCommand(interaction);
+        } else if (commandName === 'unlinkcharacter') {
+            await handleUnlinkCharacterCommand(interaction);
+        } else if (commandName === 'mycharacter') {
+            await handleMyCharacterCommand(interaction);
+        } else if (commandName === 'viewcharacter') {
+            await handleViewCharacterCommand(interaction);
         }
     }
 
@@ -337,6 +416,114 @@ async function handleCloseCommand(interaction) {
             console.error('Error closing ticket:', error);
         }
     }, 5000);
+}
+
+// Link character command
+async function handleLinkCharacterCommand(interaction) {
+    const characterId = interaction.options.getString('character_id');
+    const characterName = interaction.options.getString('character_name');
+    const userId = interaction.user.id;
+
+    // Store the link
+    characterLinks.set(userId, {
+        characterId: characterId,
+        characterName: characterName,
+        linkedAt: new Date().toISOString()
+    });
+
+    saveCharacterLinks();
+
+    const { EmbedBuilder } = require('discord.js');
+    const embed = new EmbedBuilder()
+        .setColor('#00FF00')
+        .setTitle('✅ Character Linked')
+        .setDescription(`Your FoundryVTT character has been linked!`)
+        .addFields(
+            { name: 'Character Name', value: characterName, inline: true },
+            { name: 'Character ID', value: characterId, inline: true }
+        )
+        .setTimestamp();
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+// Unlink character command
+async function handleUnlinkCharacterCommand(interaction) {
+    const userId = interaction.user.id;
+
+    if (!characterLinks.has(userId)) {
+        return interaction.reply({
+            content: '❌ You don\'t have a linked character.',
+            ephemeral: true
+        });
+    }
+
+    const characterData = characterLinks.get(userId);
+    characterLinks.delete(userId);
+    saveCharacterLinks();
+
+    await interaction.reply({
+        content: `✅ Your character "${characterData.characterName}" has been unlinked.`,
+        ephemeral: true
+    });
+}
+
+// My character command
+async function handleMyCharacterCommand(interaction) {
+    const userId = interaction.user.id;
+
+    if (!characterLinks.has(userId)) {
+        return interaction.reply({
+            content: '❌ You don\'t have a linked character. Use `/linkcharacter` to link one.',
+            ephemeral: true
+        });
+    }
+
+    const characterData = characterLinks.get(userId);
+    const { EmbedBuilder } = require('discord.js');
+
+    const embed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('📜 Your FoundryVTT Character')
+        .setDescription(`Character linked to ${interaction.user}`)
+        .addFields(
+            { name: 'Character Name', value: characterData.characterName, inline: true },
+            { name: 'Character ID', value: characterData.characterId, inline: true },
+            { name: 'Linked Since', value: `<t:${Math.floor(new Date(characterData.linkedAt).getTime() / 1000)}:R>`, inline: true }
+        )
+        .setFooter({ text: 'Use /unlinkcharacter to remove this link' })
+        .setTimestamp();
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+// View character command
+async function handleViewCharacterCommand(interaction) {
+    const targetUser = interaction.options.getUser('user');
+    const userId = targetUser.id;
+
+    if (!characterLinks.has(userId)) {
+        return interaction.reply({
+            content: `❌ ${targetUser.tag} doesn't have a linked character.`,
+            ephemeral: true
+        });
+    }
+
+    const characterData = characterLinks.get(userId);
+    const { EmbedBuilder } = require('discord.js');
+
+    const embed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('📜 FoundryVTT Character')
+        .setDescription(`Character linked to ${targetUser}`)
+        .addFields(
+            { name: 'Character Name', value: characterData.characterName, inline: true },
+            { name: 'Character ID', value: characterData.characterId, inline: true },
+            { name: 'Linked Since', value: `<t:${Math.floor(new Date(characterData.linkedAt).getTime() / 1000)}:R>`, inline: true }
+        )
+        .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
 }
 
 client.login(config.token);

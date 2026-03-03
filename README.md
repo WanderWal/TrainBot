@@ -1,9 +1,10 @@
-# Discord Ticket Bot
+# Discord Ticket Bot with FoundryVTT Integration
 
-A Discord bot that manages a ticket system for character concepts, creation, and submissions.
+A Discord bot that manages a ticket system for character concepts, creation, and submissions, plus integrates with FoundryVTT character sheets.
 
 ## Features
 
+### Ticket System
 - 🎫 **Ticket Creation**: Users can create tickets using `/ticket` command
 - 📋 **Ticket Types**: Three types available:
   - Character Concept
@@ -12,6 +13,12 @@ A Discord bot that manages a ticket system for character concepts, creation, and
 - 🔒 **Private Channels**: Creates private text and voice channels for each ticket
 - 👥 **Role-based Access**: Only ticket creator and support role members can access ticket channels
 - ✅ **Ticket Closing**: Close tickets with `/close` command
+
+### FoundryVTT Character Integration
+- 🎭 **Character Linking**: Link your Discord account to a FoundryVTT character
+- 👁️ **Character Viewing**: View your own or others' linked characters
+- 🔗 **Easy Management**: Simple commands to link/unlink characters
+- 💾 **Persistent Storage**: Character links are saved and persist across bot restarts
 
 ## Setup
 
@@ -30,17 +37,19 @@ A Discord bot that manages a ticket system for character concepts, creation, and
 npm install
 ```
 
-3. Configure the bot by editing `config.json`:
-```json
-{
-  "token": "YOUR_BOT_TOKEN_HERE",
-  "clientId": "YOUR_CLIENT_ID_HERE",
-  "guildId": "YOUR_GUILD_ID_HERE",
-  "ticketChannelId": "YOUR_TICKET_CHANNEL_ID_HERE",
-  "supportRoleId": "YOUR_SUPPORT_ROLE_ID_HERE",
-  "ticketCategoryId": "YOUR_CATEGORY_ID_HERE"
-}
+3. Create a `.env` file in the project root:
+```env
+DISCORD_TOKEN=YOUR_BOT_TOKEN_HERE
+CLIENT_ID=YOUR_CLIENT_ID_HERE
+GUILD_ID=YOUR_GUILD_ID_HERE
+TICKET_CHANNEL_ID=YOUR_TICKET_CHANNEL_ID_HERE
+SUPPORT_ROLE_ID=YOUR_SUPPORT_ROLE_ID_HERE
+TICKET_CATEGORY_ID=YOUR_CATEGORY_ID_HERE
+FOUNDRY_API_URL=http://localhost:30000
+FOUNDRY_API_KEY=YOUR_FOUNDRY_API_KEY_HERE
 ```
+
+Note: FoundryVTT settings are optional and only needed if you want to integrate with FoundryVTT's API directly. For your Forge instance, set `FOUNDRY_API_URL=https://druskenvald.eu.forge-vtt.com`.
 
 ### Configuration Guide
 
@@ -89,9 +98,9 @@ Start the bot:
 npm start
 ```
 
-## Usage
+## UTicket Commands
 
-### Creating a Ticket
+#### Creating a Ticket
 
 1. Go to the designated ticket channel
 2. Type `/ticket`
@@ -99,9 +108,48 @@ npm start
 4. A private text and voice channel will be created
 5. Support role members will be notified
 
-### Closing a Ticket
+#### Closing a Ticket
 
 1. In the ticket's text channel, type `/close`
+2. The ticket creator or support role members can close tickets
+3. Both text and voice channels will be deleted after 5 seconds
+
+### FoundryVTT Character Commands
+
+#### `/linkcharacter`
+Link a FoundryVTT character to your Discord account.
+```
+/linkcharacter character_id:abc123 character_name:Gandalf the Grey
+```
+- **character_id**: The unique ID of your character in FoundryVTT
+- **character_name**: The display name of your character
+
+#### `/unlinkcharacter`
+Unlink your currently linked character.
+```
+/unlinkcharacter
+```
+
+#### `/mycharacter`
+View your own linked character information.
+```
+/mycharacter
+```
+
+#### `/viewcharacter`
+View another user's linked character.
+```
+/viewcharacter user:@Username
+```
+
+### Finding Your FoundryVTT Character ID
+
+To find your character ID in FoundryVTT:
+1. Open your FoundryVTT game as a GM
+2. Open the browser console (F12)
+3. Type: `game.actors.getName("Your Character Name").id`
+4. Copy the ID that appears
+5. Use this ID when linking with `/linkcharacter`
 2. The ticket creator or support role members can close tickets
 3. Both text and voice channels will be deleted after 5 seconds
 
