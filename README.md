@@ -17,6 +17,7 @@ A Discord bot that manages a ticket system for character concepts, creation, and
 ### FoundryVTT Character Integration
 - 🎭 **Character Linking**: Link your Discord account to a FoundryVTT character
 - 👁️ **Character Viewing**: View your own or others' linked characters
+- 🎒 **Inventory Access**: View your character's inventory directly from Discord
 - 🔗 **Easy Management**: Simple commands to link/unlink characters
 - ☁️ **Cloud Storage**: Character links are stored securely via the REST API relay
 
@@ -163,6 +164,42 @@ View your own linked character information.
 View another user's linked character.
 ```
 /viewcharacter user:@Username
+```
+
+#### `/inventory`
+View your character's inventory from FoundryVTT.
+```
+/inventory
+```
+- Displays all items in your linked character's inventory
+- Groups items by type (weapons, armor, equipment, etc.)
+- Shows quantity and equipped status
+- Automatically updates with your current Foundry inventory
+
+**Note**: You must have a linked character to use this command. Link one first using `/linkcharacter`.
+
+**Example Output**:
+```
+🎒 Gandalf's Inventory
+Total Items: 23
+
+Weapon (3)
+• Wizard's Staff ⚔️
+• Dagger (x2)
+
+Armor (2)
+• Robes of the White ⚔️
+• Traveler's Cloak
+
+Equipment (8)
+• Rope (50 ft)
+• Torch (x5)
+• Healing Potion (x2)
+
+Consumable (5)
+• Pipeweed
+• Lembas Bread (x4)
+...and more
 ```
 
 ### Finding Your FoundryVTT Character Sheet Name

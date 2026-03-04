@@ -197,6 +197,35 @@ async function getAllCharacterLinks(): Promise<CharacterLink[]> {
     return result.data;
 }
 
+async function fetchActorData(actorUuid: string): Promise<any> {
+    if (!config.foundryApiKey) {
+        throw new Error('FOUNDRY_API_KEY is not configured.');
+    }
+
+    if (!config.foundryRelayClientId) {
+        throw new Error('FOUNDRY_RELAY_CLIENT_ID is not configured.');
+    }
+
+    const relayBase = config.foundryRelayUrl.replace(/\/$/, '');
+    const url = new URL(`${relayBase}/get`);
+    url.searchParams.set('clientId', config.foundryRelayClientId);
+    url.searchParams.set('uuid', actorUuid);
+
+    const response = await fetchFn(url.toString(), {
+        headers: {
+            'x-api-key': config.foundryApiKey
+        }
+    });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Failed to fetch actor data: ${text || response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+}
+
 async function fetchFoundryActorUuidByName(characterName: string): Promise<{ uuid: string; match: Record<string, unknown> } | null> {
     if (!config.foundryApiKey) {
         throw new Error('FOUNDRY_API_KEY is not configured.');
@@ -323,6 +352,11 @@ client.once(Events.ClientReady, async () => {
                     required: true
                 }
             ]
+        },
+        {
+            name: 'inventory',
+            description: 'View your character\'s inventory from FoundryVTT',
+            options: []
         }
     ];
 
@@ -358,6 +392,8 @@ client.on(Events.InteractionCreate, async interaction => {
             await handleMyCharacterCommand(interaction);
         } else if (commandName === 'viewcharacter') {
             await handleViewCharacterCommand(interaction);
+        } else if (commandName === 'inventory') {
+            await handleInventoryCommand(interaction);
         }
     }
 
@@ -801,6 +837,106 @@ async function handleViewCharacterCommand(interaction: ChatInputCommandInteracti
         await interaction.reply({
             content: `❌ Failed to retrieve character information: ${(error as Error).message}`,
             ephemeral: true
+        });
+    }
+}
+
+async function handleInventoryCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+    const userId = interaction.user.id;
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+        // Get the user's linked character
+        const characterData = await getCharacterLink(userId);
+
+        if (!characterData) {
+            await interaction.editReply({
+                content: "❌ You don't have a linked character. Use `/linkcharacter` to link one first."
+            });
+            return;
+        }
+
+        // Fetch the actor data from Foundry
+        const actorData = await fetchActorData(characterData.actorUuid);
+
+        if (!actorData || !actorData.items) {
+            await interaction.editReply({
+                content: '❌ Failed to retrieve inventory data from Foundry.'
+            });
+            return;
+        }
+
+        // Parse items from the actor data
+        const items = Array.isArray(actorData.items) ? actorData.items : [];
+        
+        if (items.length === 0) {
+            const embed = new EmbedBuilder()
+                .setColor('#5865F2')
+                .setTitle(`🎒 ${characterData.actorName}'s Inventory`)
+                .setDescription('Your inventory is empty.')
+                .setTimestamp();
+
+            await interaction.editReply({ embeds: [embed] });
+            return;
+        }
+
+        // Group items by type
+        const itemsByType: { [key: string]: any[] } = {};
+        for (const item of items) {
+            const itemType = item.type || 'other';
+            if (!itemsByType[itemType]) {
+                itemsByType[itemType] = [];
+            }
+            itemsByType[itemType].push(item);
+        }
+
+        // Create embeds (Discord has a 25 field limit per embed)
+        const embed = new EmbedBuilder()
+            .setColor('#5865F2')
+            .setTitle(`🎒 ${characterData.actorName}'s Inventory`)
+            .setDescription(`Total Items: ${items.length}`)
+            .setTimestamp();
+
+        // Add fields for each item type (limit to avoid Discord's field limit)
+        let fieldCount = 0;
+        const maxFields = 25;
+
+        for (const [type, typeItems] of Object.entries(itemsByType)) {
+            if (fieldCount >= maxFields) break;
+
+            const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+            const itemList = typeItems
+                .slice(0, 10) // Limit items per type to avoid huge messages
+                .map(item => {
+                    const name = item.name || 'Unknown';
+                    const qty = item.system?.quantity || item.data?.quantity || 1;
+                    const equipped = item.system?.equipped || item.data?.equipped;
+                    const equippedStr = equipped ? ' ⚔️' : '';
+                    return qty > 1 ? `• ${name} (x${qty})${equippedStr}` : `• ${name}${equippedStr}`;
+                })
+                .join('\n');
+
+            const moreItems = typeItems.length > 10 ? `\n_...and ${typeItems.length - 10} more_` : '';
+
+            embed.addFields({
+                name: `${typeLabel} (${typeItems.length})`,
+                value: itemList + moreItems || 'None',
+                inline: false
+            });
+
+            fieldCount++;
+        }
+
+        if (Object.keys(itemsByType).length > maxFields) {
+            embed.setFooter({ text: 'Some item types are not shown due to Discord limits' });
+        }
+
+        await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+        console.error('Error fetching inventory:', error);
+        await interaction.editReply({
+            content: `❌ Failed to retrieve inventory: ${(error as Error).message}`
         });
     }
 }
