@@ -83,7 +83,7 @@ async function fetchFoundryActorUuidByName(characterName) {
 
     const response = await fetchFn(searchUrl.toString(), {
         headers: {
-            Authorization: `Bearer ${config.foundryApiKey}`
+            'x-api-key': `${config.foundryApiKey}`
         }
     });
 
