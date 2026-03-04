@@ -884,7 +884,7 @@ async function handleInventoryCommand(interaction: ChatInputCommandInteraction):
         }
 
         // Group items by type
-        const itemsByType: { [key: string]: any[] } = {};
+        let itemsByType: { [key: string]: any[] } = {};
         for (const item of items) {
             const itemType = item.type || 'other';
             if (!itemsByType[itemType]) {
@@ -893,11 +893,20 @@ async function handleInventoryCommand(interaction: ChatInputCommandInteraction):
             itemsByType[itemType].push(item);
         }
 
+        // Filter out Class, Feats, Race and Background
+        const excludedTypes = ['class', 'feat', 'race', 'background', 'subclass'];
+        itemsByType = Object.fromEntries(
+            Object.entries(itemsByType).filter(([type]) => !excludedTypes.includes(type.toLowerCase()))
+        );
+
+        // Recalculate total items after filtering
+        const filteredItemCount = Object.values(itemsByType).reduce((sum, typeItems) => sum + typeItems.length, 0);
+
         // Create embeds (Discord has a 25 field limit per embed)
         const embed = new EmbedBuilder()
             .setColor('#5865F2')
             .setTitle(`🎒 ${characterData.actorName}'s Inventory`)
-            .setDescription(`Total Items: ${items.length}`)
+            .setDescription(`Total Items: ${filteredItemCount}`)
             .setTimestamp();
 
         // Add fields for each item type (limit to avoid Discord's field limit)
