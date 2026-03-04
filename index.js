@@ -69,10 +69,7 @@ async function fetchFoundryActorUuidByName(characterName) {
     if (!url) {
         if (config.foundryRelayUrl && config.foundryRelayClientId) {
             const relayBase = config.foundryRelayUrl.replace(/\/$/, '');
-            url = `${relayBase}/clients/${config.foundryRelayClientId}/search`;
-        } else if (config.foundryRelayUrl) {
-            const relayBase = config.foundryRelayUrl.replace(/\/$/, '');
-            url = `${relayBase}/search`;
+            url = `${relayBase}/search?clientId=${config.foundryRelayClientId}&query=${encodeURIComponent(characterName)}`;
         }
     }
 
