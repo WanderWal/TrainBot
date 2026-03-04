@@ -858,7 +858,9 @@ async function handleInventoryCommand(interaction: ChatInputCommandInteraction):
         }
 
         // Fetch the actor data from Foundry
-        const actorData = await fetchActorData(characterData.actorUuid);
+        const actor = await fetchActorData(characterData.actorUuid);
+        const actorData = actor?.data;
+
 
         if (!actorData || !actorData.items) {
             await interaction.editReply({
