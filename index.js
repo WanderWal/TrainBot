@@ -93,6 +93,7 @@ async function fetchFoundryActorUuidByName(characterName) {
     }
 
     const data = await response.json();
+    console.log(data);
 
     const results = Array.isArray(data)
         ? data
