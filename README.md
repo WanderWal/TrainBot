@@ -49,7 +49,13 @@ FOUNDRY_API_URL=http://localhost:30000
 FOUNDRY_API_KEY=YOUR_FOUNDRY_API_KEY_HERE
 ```
 
-Note: FoundryVTT settings are optional and only needed if you want to integrate with FoundryVTT's API directly. For your Forge instance, set `FOUNDRY_API_URL=https://druskenvald.eu.forge-vtt.com`.
+Note: FoundryVTT settings are required to verify character names and resolve Actor UUIDs. This project uses the relay search endpoint. Configure:
+
+- `FOUNDRY_RELAY_URL=https://foundryvtt-rest-api-relay.fly.dev`
+- `FOUNDRY_RELAY_CLIENT_ID=YOUR_CLIENT_ID`
+- `FOUNDRY_API_KEY=YOUR_RELAY_TOKEN`
+
+If your relay uses a different search endpoint, set `FOUNDRY_SEARCH_ENDPOINT` directly.
 
 ### Configuration Guide
 
@@ -119,10 +125,11 @@ npm start
 #### `/linkcharacter`
 Link a FoundryVTT character to your Discord account.
 ```
-/linkcharacter character_id:abc123 character_name:Gandalf the Grey
+/linkcharacter character_name:"Gandalf the Grey"
 ```
-- **character_id**: The unique ID of your character in FoundryVTT
-- **character_name**: The display name of your character
+- **character_name**: The exact name of your character sheet in FoundryVTT
+
+This command checks the Foundry instance before linking. If the character name is not found, it will fail.
 
 #### `/unlinkcharacter`
 Unlink your currently linked character.
@@ -142,14 +149,9 @@ View another user's linked character.
 /viewcharacter user:@Username
 ```
 
-### Finding Your FoundryVTT Character ID
+### Finding Your FoundryVTT Character Sheet Name
 
-To find your character ID in FoundryVTT:
-1. Open your FoundryVTT game as a GM
-2. Open the browser console (F12)
-3. Type: `game.actors.getName("Your Character Name").id`
-4. Copy the ID that appears
-5. Use this ID when linking with `/linkcharacter`
+Use the exact character sheet name shown in FoundryVTT (case sensitive). If your name has spaces, wrap it in quotes when using `/linkcharacter`.
 2. The ticket creator or support role members can close tickets
 3. Both text and voice channels will be deleted after 5 seconds
 

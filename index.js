@@ -3,6 +3,11 @@ const { Client, GatewayIntentBits, REST, Routes, PermissionFlagsBits } = require
 const fs = require('fs');
 const path = require('path');
 
+let fetchFn = globalThis.fetch;
+if (!fetchFn) {
+    fetchFn = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+}
+
 const config = {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.CLIENT_ID,
@@ -10,8 +15,10 @@ const config = {
     ticketChannelId: process.env.TICKET_CHANNEL_ID,
     supportRoleId: process.env.SUPPORT_ROLE_ID,
     ticketCategoryId: process.env.TICKET_CATEGORY_ID,
-    foundryApiUrl: process.env.FOUNDRY_API_URL || 'https://druskenvald.eu.forge-vtt.com',
-    foundryApiKey: process.env.FOUNDRY_API_KEY
+    foundryApiKey: process.env.FOUNDRY_API_KEY,
+    foundryRelayUrl: process.env.FOUNDRY_RELAY_URL || 'https://foundryvtt-rest-api-relay.fly.dev',
+    foundryRelayClientId: process.env.FOUNDRY_RELAY_CLIENT_ID,
+    foundrySearchEndpoint: process.env.FOUNDRY_SEARCH_ENDPOINT
 };
 
 const client = new Client({
@@ -52,6 +59,76 @@ function saveCharacterLinks() {
     }
 }
 
+async function fetchFoundryActorUuidByName(characterName) {
+    if (!config.foundryApiKey) {
+        throw new Error('FOUNDRY_API_KEY is not configured.');
+    }
+
+    let url = config.foundrySearchEndpoint;
+
+    if (!url) {
+        if (config.foundryRelayUrl && config.foundryRelayClientId) {
+            const relayBase = config.foundryRelayUrl.replace(/\/$/, '');
+            url = `${relayBase}/clients/${config.foundryRelayClientId}/search`;
+        } else if (config.foundryRelayUrl) {
+            const relayBase = config.foundryRelayUrl.replace(/\/$/, '');
+            url = `${relayBase}/search`;
+        }
+    }
+
+    if (!url) {
+        throw new Error('Foundry search endpoint is not configured. Set FOUNDRY_SEARCH_ENDPOINT or relay settings.');
+    }
+
+    const searchUrl = new URL(url);
+    searchUrl.searchParams.set('type', 'Actor');
+    searchUrl.searchParams.set('name', characterName);
+
+    const response = await fetchFn(searchUrl.toString(), {
+        headers: {
+            Authorization: `Bearer ${config.foundryApiKey}`
+        }
+    });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Foundry API error (${response.status}): ${text || response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    const results = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data?.results)
+                ? data.results
+                : [];
+
+    const target = normalizeName(characterName);
+    const match = results.find(result => {
+        const resultName = result?.name ?? result?.data?.name ?? result?.title;
+        return normalizeName(resultName) === target;
+    });
+
+    const uuid = match?.uuid ?? match?.data?.uuid ?? match?._id ?? null;
+    return uuid ? { uuid, match } : null;
+}
+
+function normalizeName(name) {
+    return String(name || '').trim().toLowerCase();
+}
+
+async function verifyFoundryCharacterName(characterName) {
+    const result = await fetchFoundryActorUuidByName(characterName);
+
+    if (!result) {
+        return { ok: false, reason: 'not_found' };
+    }
+
+    return { ok: true, actor: result.match, uuid: result.uuid };
+}
+
 client.once('clientReady', async () => {
     console.log(`✅ Bot logged in as ${client.user.tag}`);
     
@@ -72,15 +149,9 @@ client.once('clientReady', async () => {
             description: 'Link a FoundryVTT character to your Discord account',
             options: [
                 {
-                    name: 'character_id',
-                    type: 3, // STRING
-                    description: 'The FoundryVTT character ID',
-                    required: true
-                },
-                {
                     name: 'character_name',
                     type: 3, // STRING
-                    description: 'The character name (for display)',
+                    description: 'The FoundryVTT character sheet name',
                     required: true
                 }
             ]
@@ -420,14 +491,31 @@ async function handleCloseCommand(interaction) {
 
 // Link character command
 async function handleLinkCharacterCommand(interaction) {
-    const characterId = interaction.options.getString('character_id');
     const characterName = interaction.options.getString('character_name');
     const userId = interaction.user.id;
 
+    let verification;
+    try {
+        verification = await verifyFoundryCharacterName(characterName);
+    } catch (error) {
+        console.error('Foundry verification error:', error);
+        return interaction.reply({
+            content: `❌ Unable to verify character name against Foundry. ${error.message}`,
+            ephemeral: true
+        });
+    }
+
+    if (!verification.ok) {
+        return interaction.reply({
+            content: `❌ Character "${characterName}" not found on the Foundry instance. Check the exact sheet name and try again.`,
+            ephemeral: true
+        });
+    }
+
     // Store the link
     characterLinks.set(userId, {
-        characterId: characterId,
         characterName: characterName,
+        actorUuid: verification.uuid,
         linkedAt: new Date().toISOString()
     });
 
@@ -440,7 +528,7 @@ async function handleLinkCharacterCommand(interaction) {
         .setDescription(`Your FoundryVTT character has been linked!`)
         .addFields(
             { name: 'Character Name', value: characterName, inline: true },
-            { name: 'Character ID', value: characterId, inline: true }
+            { name: 'Actor UUID', value: verification.uuid, inline: true }
         )
         .setTimestamp();
 
@@ -488,7 +576,7 @@ async function handleMyCharacterCommand(interaction) {
         .setDescription(`Character linked to ${interaction.user}`)
         .addFields(
             { name: 'Character Name', value: characterData.characterName, inline: true },
-            { name: 'Character ID', value: characterData.characterId, inline: true },
+            { name: 'Actor UUID', value: characterData.actorUuid || 'Unknown', inline: true },
             { name: 'Linked Since', value: `<t:${Math.floor(new Date(characterData.linkedAt).getTime() / 1000)}:R>`, inline: true }
         )
         .setFooter({ text: 'Use /unlinkcharacter to remove this link' })
@@ -518,7 +606,7 @@ async function handleViewCharacterCommand(interaction) {
         .setDescription(`Character linked to ${targetUser}`)
         .addFields(
             { name: 'Character Name', value: characterData.characterName, inline: true },
-            { name: 'Character ID', value: characterData.characterId, inline: true },
+            { name: 'Actor UUID', value: characterData.actorUuid || 'Unknown', inline: true },
             { name: 'Linked Since', value: `<t:${Math.floor(new Date(characterData.linkedAt).getTime() / 1000)}:R>`, inline: true }
         )
         .setTimestamp();
