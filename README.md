@@ -18,7 +18,7 @@ A Discord bot that manages a ticket system for character concepts, creation, and
 - 🎭 **Character Linking**: Link your Discord account to a FoundryVTT character
 - 👁️ **Character Viewing**: View your own or others' linked characters
 - 🔗 **Easy Management**: Simple commands to link/unlink characters
-- 💾 **Persistent Storage**: Character links are saved and persist across bot restarts
+- ☁️ **Cloud Storage**: Character links are stored securely via the REST API relay
 
 ## Setup
 
@@ -48,6 +48,12 @@ TICKET_CATEGORY_ID=YOUR_CATEGORY_ID_HERE
 FOUNDRY_API_URL=http://localhost:30000
 FOUNDRY_API_KEY=YOUR_FOUNDRY_API_KEY_HERE
 ```
+
+**Important:** The bot now uses the FoundryVTT REST API Relay to store character links. Make sure you have:
+- A valid API key from the relay service
+- The `FOUNDRY_RELAY_URL` configured (defaults to `https://foundryvtt-rest-api-relay.fly.dev`)
+- The `FOUNDRY_RELAY_CLIENT_ID` set to your Foundry client ID
+- The `FOUNDRY_API_KEY` for authentication with the relay service
 
 Note: FoundryVTT settings are required to verify character names and resolve Actor UUIDs. This project uses the relay search endpoint. Configure:
 
@@ -99,9 +105,19 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=26
 
 ### Running the Bot
 
+Build the TypeScript:
+```bash
+npm run build
+```
+
 Start the bot:
 ```bash
 npm start
+```
+
+Run in dev mode (TypeScript):
+```bash
+npm run dev
 ```
 
 ## UTicket Commands
