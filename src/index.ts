@@ -709,6 +709,20 @@ async function handleLinkCharacterCommand(interaction: ChatInputCommandInteracti
     }
 
     try {
+        // Check if this character is already claimed by another user
+        const allLinks = await getAllCharacterLinks();
+        const existingClaim = allLinks.find(link => 
+            link.actorUuid === verification.uuid && link.discordUserId !== userId
+        );
+
+        if (existingClaim) {
+            await interaction.reply({
+                content: `❌ Character "${characterName}" is already claimed by another user. Please choose a different character.`,
+                ephemeral: true
+            });
+            return;
+        }
+
         const link = await createOrUpdateCharacterLink(userId, verification.uuid, characterName);
 
         const embed = new EmbedBuilder()
