@@ -262,7 +262,6 @@ async function fetchFoundryActorUuidByName(characterName: string): Promise<{ uui
     }
 
     const data: unknown = await response.json();
-    console.log(data);
 
     const results = Array.isArray(data)
         ? data
@@ -272,12 +271,42 @@ async function fetchFoundryActorUuidByName(characterName: string): Promise<{ uui
                 ? (data as { results: unknown[] }).results
                 : [];
 
+    if (results.length === 0) {
+        return null;
+    }
+
     const target = normalizeName(characterName);
-    const match = results.find(result => {
+    
+    // First try exact match
+    let match = results.find(result => {
         const resultRecord = result as Record<string, unknown> | null;
         const resultName = (resultRecord?.name ?? (resultRecord?.data as Record<string, unknown> | undefined)?.name ?? resultRecord?.title) as string | undefined;
         return normalizeName(resultName) === target;
     }) as Record<string, unknown> | undefined;
+
+    // If no exact match, find the closest match (contains the search term)
+    if (!match) {
+        const partialMatches = results.filter(result => {
+            const resultRecord = result as Record<string, unknown> | null;
+            const resultName = (resultRecord?.name ?? (resultRecord?.data as Record<string, unknown> | undefined)?.name ?? resultRecord?.title) as string | undefined;
+            const normalizedResultName = normalizeName(resultName);
+            return normalizedResultName.includes(target) || target.includes(normalizedResultName);
+        });
+
+        if (partialMatches.length > 0) {
+            // Use the first partial match (or could calculate similarity scores)
+            match = partialMatches[0] as Record<string, unknown>;
+        }
+    }
+
+    // If still no match, just use the first result as closest match
+    if (!match && results.length > 0) {
+        match = results[0] as Record<string, unknown>;
+    }
+
+    if (!match) {
+        return null;
+    }
 
     const uuid = (match?.uuid ?? (match?.data as Record<string, unknown> | undefined)?.uuid ?? match?._id) as string | undefined;
     if (!uuid || !match) {
