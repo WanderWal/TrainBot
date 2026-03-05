@@ -386,6 +386,24 @@ client.once(Events.ClientReady, async () => {
             name: 'inventory',
             description: 'View your character\'s inventory from FoundryVTT',
             options: []
+        },
+        {
+            name: 'assigncharacter',
+            description: '[Support] Assign a FoundryVTT character to a Discord user',
+            options: [
+                {
+                    name: 'user',
+                    type: 6,
+                    description: 'The user to assign the character to',
+                    required: true
+                },
+                {
+                    name: 'character_name',
+                    type: 3,
+                    description: 'The FoundryVTT character sheet name',
+                    required: true
+                }
+            ]
         }
     ];
 
@@ -423,6 +441,8 @@ client.on(Events.InteractionCreate, async interaction => {
             await handleViewCharacterCommand(interaction);
         } else if (commandName === 'inventory') {
             await handleInventoryCommand(interaction);
+        } else if (commandName === 'assigncharacter') {
+            await handleAssignCharacterCommand(interaction);
         }
     }
 
@@ -879,6 +899,114 @@ async function handleViewCharacterCommand(interaction: ChatInputCommandInteracti
         console.error('Error viewing character:', error);
         await interaction.reply({
             content: `❌ Failed to retrieve character information: ${(error as Error).message}`,
+            ephemeral: true
+        });
+    }
+}
+
+async function handleAssignCharacterCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+    const member = interaction.member;
+    
+    // Check if user has support role
+    const hasSupport = member && 'roles' in member && (
+        Array.isArray(member.roles)
+            ? member.roles.includes(requiredConfig.supportRoleId)
+            : member.roles.cache.has(requiredConfig.supportRoleId)
+    );
+
+    if (!hasSupport) {
+        await interaction.reply({
+            content: '❌ You do not have permission to use this command. Only support staff can assign characters.',
+            ephemeral: true
+        });
+        return;
+    }
+
+    const targetUser = interaction.options.getUser('user');
+    const characterName = interaction.options.getString('character_name');
+
+    if (!targetUser || !characterName) {
+        await interaction.reply({
+            content: '❌ Both user and character name are required.',
+            ephemeral: true
+        });
+        return;
+    }
+
+    const targetUserId = targetUser.id;
+
+    let verification;
+    try {
+        verification = await verifyFoundryCharacterName(characterName);
+    } catch (error) {
+        console.error('Foundry verification error:', error);
+        await interaction.reply({
+            content: `❌ Unable to verify character name against Foundry. ${(error as Error).message}`,
+            ephemeral: true
+        });
+        return;
+    }
+
+    if (!verification.ok) {
+        await interaction.reply({
+            content: `❌ Character "${characterName}" not found on the Foundry instance. Check the exact sheet name and try again.`,
+            ephemeral: true
+        });
+        return;
+    }
+
+    try {
+        // Check if this character is already claimed by another user
+        const allLinks = await getAllCharacterLinks();
+        const existingClaim = allLinks.find(link => 
+            link.actorUuid === verification.uuid && link.discordUserId !== targetUserId
+        );
+
+        if (existingClaim) {
+            await interaction.reply({
+                content: `❌ Character "${characterName}" is already claimed by another user (<@${existingClaim.discordUserId}>). Unlink it first or choose a different character.`,
+                ephemeral: true
+            });
+            return;
+        }
+
+        const link = await createOrUpdateCharacterLink(targetUserId, verification.uuid, characterName);
+
+        const embed = new EmbedBuilder()
+            .setColor('#00FF00')
+            .setTitle('✅ Character Assigned')
+            .setDescription(`Character has been assigned to ${targetUser}`)
+            .addFields(
+                { name: 'User', value: `<@${targetUserId}>`, inline: true },
+                { name: 'Character Name', value: characterName, inline: true },
+                { name: 'Actor UUID', value: verification.uuid, inline: false },
+                { name: 'Assigned By', value: `${interaction.user.tag}`, inline: true }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed] });
+
+        // Optionally DM the user that a character was assigned to them
+        try {
+            const dmEmbed = new EmbedBuilder()
+                .setColor('#00FF00')
+                .setTitle('📜 Character Assigned')
+                .setDescription(`A FoundryVTT character has been assigned to you by ${interaction.user.tag}!`)
+                .addFields(
+                    { name: 'Character Name', value: characterName, inline: true }
+                )
+                .setFooter({ text: 'Use /mycharacter to view your linked character' })
+                .setTimestamp();
+
+            await targetUser.send({ embeds: [dmEmbed] });
+        } catch (dmError) {
+            // Silently fail if user has DMs disabled
+            console.log(`Could not DM user ${targetUser.tag}:`, dmError);
+        }
+    } catch (error) {
+        console.error('Error assigning character:', error);
+        await interaction.reply({
+            content: `❌ Failed to assign character: ${(error as Error).message}`,
             ephemeral: true
         });
     }
