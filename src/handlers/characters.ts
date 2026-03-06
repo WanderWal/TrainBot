@@ -1,6 +1,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { requiredConfig } from '../config.js';
-import { verifyFoundryCharacterName, getAllCharacterLinks, createOrUpdateCharacterLink, getCharacterLink, deleteCharacterLink, fetchActorData } from '../api.js';
+import { verifyFoundryCharacterName, fetchActorData } from '../api.js';
+import { getAllCharacterLinks, createOrUpdateCharacterLink, getCharacterLink, deleteCharacterLink } from '../models/character.js';
 
 export async function handleLinkCharacterCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     const characterName = interaction.options.getString('character_name');
@@ -32,7 +33,7 @@ export async function handleLinkCharacterCommand(interaction: ChatInputCommandIn
             return;
         }
 
-        const link = await createOrUpdateCharacterLink(userId, verification.uuid, characterName);
+        const link = await createOrUpdateCharacterLink(userId, verification.uuid, characterName, interaction.user.username);
 
         const embed = new EmbedBuilder()
             .setColor('#00FF00')
@@ -148,7 +149,7 @@ export async function handleAssignCharacterCommand(interaction: ChatInputCommand
             await interaction.reply({ content: `❌ Character "${characterName}" is already claimed by another user (<@${existingClaim.discordUserId}>). Unlink it first or choose a different character.`, ephemeral: true });
             return;
         }
-        const link = await createOrUpdateCharacterLink(targetUserId, verification.uuid, characterName);
+        const link = await createOrUpdateCharacterLink(targetUserId, verification.uuid, characterName, targetUser.username);
         const embed = new EmbedBuilder()
             .setColor('#00FF00')
             .setTitle('✅ Character Assigned')
