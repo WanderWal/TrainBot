@@ -10,7 +10,9 @@ export const config = {
     foundryApiKey: process.env.FOUNDRY_API_KEY,
     foundryRelayUrl: process.env.FOUNDRY_RELAY_URL || 'https://foundryvtt-rest-api-relay.fly.dev',
     foundryRelayClientId: process.env.FOUNDRY_RELAY_CLIENT_ID,
-    foundrySearchEndpoint: process.env.FOUNDRY_SEARCH_ENDPOINT
+    foundrySearchEndpoint: process.env.FOUNDRY_SEARCH_ENDPOINT,
+    directusUrl: process.env.DIRECTUS_URL || 'https://directus-production-1a50.up.railway.app',
+    directusToken: process.env.DIRECTUS_TOKEN
 };
 
 export type RequiredConfig = typeof config & {
