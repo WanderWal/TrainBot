@@ -122,3 +122,22 @@ export async function getAllCharacterLinks(): Promise<CharacterLink[]> {
         updatedAt: char.date_updated || new Date().toISOString()
     }));
 }
+
+export async function updateCharacterRawData(characterId: number, rawData: any): Promise<void> {
+    const url = `${config.directusUrl}/items/characters/${characterId}`;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (config.directusToken) {
+        headers['Authorization'] = `Bearer ${config.directusToken}`;
+    }
+
+    const response = await fetchFn(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ raw_data: rawData })
+    });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Failed to update character raw data: ${text || response.statusText}`);
+    }
+}

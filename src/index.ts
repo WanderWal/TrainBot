@@ -2,7 +2,7 @@ import { Client, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { requiredConfig } from './config.js';
 import { commands } from './commands.js';
 import { handleTicketCommand, handleTicketSelection, handleCloseCommand } from './handlers/tickets.js';
-import { handleLinkCharacterCommand, handleUnlinkCharacterCommand, handleMyCharacterCommand, handleViewCharacterCommand, handleAssignCharacterCommand, handleInventoryCommand } from './handlers/characters.js';
+import { handleLinkCharacterCommand, handleUnlinkCharacterCommand, handleMyCharacterCommand, handleViewCharacterCommand, handleAssignCharacterCommand, handleInventoryCommand, handleSyncCharactersCommand } from './handlers/characters.js';
 
 const client = new Client({
     intents: [
@@ -34,12 +34,11 @@ client.on(Events.InteractionCreate, async interaction => {
         const { commandName } = interaction;
         if (commandName === 'ticket') await handleTicketCommand(interaction);
         else if (commandName === 'close') await handleCloseCommand(interaction);
-        else if (commandName === 'linkcharacter') await handleLinkCharacterCommand(interaction);
-        else if (commandName === 'unlinkcharacter') await handleUnlinkCharacterCommand(interaction);
         else if (commandName === 'mycharacter') await handleMyCharacterCommand(interaction);
         else if (commandName === 'viewcharacter') await handleViewCharacterCommand(interaction);
         else if (commandName === 'inventory') await handleInventoryCommand(interaction);
         else if (commandName === 'assigncharacter') await handleAssignCharacterCommand(interaction);
+        else if (commandName === 'synccharacters') await handleSyncCharactersCommand(interaction);
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_type') {

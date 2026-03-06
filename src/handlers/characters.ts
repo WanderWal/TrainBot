@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { requiredConfig } from '../config.js';
 import { verifyFoundryCharacterName, fetchActorData } from '../api.js';
-import { getAllCharacterLinks, createOrUpdateCharacterLink, getCharacterLink, deleteCharacterLink } from '../models/character.js';
+import { getAllCharacterLinks, createOrUpdateCharacterLink, getCharacterLink, deleteCharacterLink, updateCharacterRawData } from '../models/character.js';
 
 export async function handleLinkCharacterCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     const characterName = interaction.options.getString('character_name');
@@ -232,5 +232,42 @@ export async function handleInventoryCommand(interaction: ChatInputCommandIntera
         await interaction.editReply({ embeds: [embed] });
     } catch (error) {
         await interaction.editReply({ content: `❌ Failed to retrieve inventory: ${(error as Error).message}` });
+    }
+}
+
+export async function handleSyncCharactersCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+    const member = interaction.member;
+    const hasSupport = member && 'roles' in member && (Array.isArray(member.roles) ? member.roles.includes(requiredConfig.supportRoleId) : member.roles.cache.has(requiredConfig.supportRoleId));
+    if (!hasSupport) {
+        await interaction.reply({ content: '❌ You do not have permission to use this command. Only support staff can sync characters.', ephemeral: true });
+        return;
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+        const allLinks = await getAllCharacterLinks();
+        if (allLinks.length === 0) {
+            await interaction.editReply({ content: '❌ No characters to sync.' });
+            return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const link of allLinks) {
+            try {
+                const actorData = await fetchActorData(link.actorUuid);
+                await updateCharacterRawData(link.id, actorData);
+                successCount++;
+            } catch (err) {
+                console.error(`Failed to sync character ${link.actorName}:`, err);
+                failCount++;
+            }
+        }
+
+        await interaction.editReply({ content: `✅ Sync complete. Successfully synced ${successCount} characters. Failed to sync ${failCount} characters.` });
+    } catch (error) {
+        await interaction.editReply({ content: `❌ Failed to sync characters: ${(error as Error).message}` });
     }
 }

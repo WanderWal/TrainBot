@@ -17,5 +17,10 @@ export const commands = [
             { name: 'user', type: 6, description: 'The user to assign the character to', required: true },
             { name: 'character_name', type: 3, description: 'The FoundryVTT character sheet name', required: true }
         ]
+    },
+    {
+        name: 'synccharacters',
+        description: '[Support] Sync all characters raw data from FoundryVTT to the database',
+        options: []
     }
 ];
