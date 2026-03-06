@@ -75,6 +75,7 @@ export async function getCharacterLink(discordUserId: string): Promise<Character
         discordUserId: char.player_id?.discord_id || discordUserId,
         actorUuid: char.foundry_uuid,
         actorName: char.name,
+        rawData: char.raw_data,
         createdAt: char.date_created || new Date().toISOString(),
         updatedAt: char.date_updated || new Date().toISOString()
     };
@@ -118,6 +119,7 @@ export async function getAllCharacterLinks(): Promise<CharacterLink[]> {
         discordUserId: char.player_id?.discord_id || '',
         actorUuid: char.foundry_uuid,
         actorName: char.name,
+        rawData: char.raw_data,
         createdAt: char.date_created || new Date().toISOString(),
         updatedAt: char.date_updated || new Date().toISOString()
     }));

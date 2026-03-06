@@ -9,6 +9,7 @@ export type CharacterLink = {
     discordUserId: string;
     actorUuid: string;
     actorName: string;
+    rawData?: any;
     createdAt: string;
     updatedAt: string;
 };

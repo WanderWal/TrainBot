@@ -188,10 +188,10 @@ export async function handleInventoryCommand(interaction: ChatInputCommandIntera
             await interaction.editReply({ content: "❌ You don't have a linked character. Use `/linkcharacter` to link one first." });
             return;
         }
-        const actor = await fetchActorData(characterData.actorUuid);
-        const actorData = actor?.data;
+        
+        const actorData = characterData.rawData?.data || characterData.rawData;
         if (!actorData || !actorData.items) {
-            await interaction.editReply({ content: '❌ Failed to retrieve inventory data from Foundry.' });
+            await interaction.editReply({ content: '❌ No inventory data found for your character in the database. Please wait for the next sync.' });
             return;
         }
         const items = Array.isArray(actorData.items) ? actorData.items : [];
