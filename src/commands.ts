@@ -1,14 +1,6 @@
 export const commands = [
     { name: 'ticket', description: 'Create a new ticket', options: [] },
     { name: 'close', description: 'Close the current ticket', options: [] },
-    {
-        name: 'linkcharacter',
-        description: 'Link a FoundryVTT character to your Discord account',
-        options: [
-            { name: 'character_name', type: 3, description: 'The FoundryVTT character sheet name', required: true }
-        ]
-    },
-    { name: 'unlinkcharacter', description: 'Unlink your FoundryVTT character', options: [] },
     { name: 'mycharacter', description: 'View your linked FoundryVTT character', options: [] },
     {
         name: 'viewcharacter',
