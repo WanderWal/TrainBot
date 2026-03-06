@@ -18,7 +18,7 @@ A Discord bot that manages a ticket system for character concepts, creation, and
 - 🎭 **Character Linking**: Link your Discord account to a FoundryVTT character
 - 👁️ **Character Viewing**: View your own or others' linked characters
 - 🎒 **Inventory Access**: View your character's inventory directly from Discord
-- 🔗 **Easy Management**: Simple commands to link/unlink characters
+- 🔗 **Easy Management**: Simple commands to link characters
 - ☁️ **Cloud Storage**: Character links are stored securely via the REST API relay
 
 ## Setup
@@ -138,21 +138,6 @@ npm run dev
 3. Both text and voice channels will be deleted after 5 seconds
 
 ### FoundryVTT Character Commands
-
-#### `/linkcharacter`
-Link a FoundryVTT character to your Discord account.
-```
-/linkcharacter character_name:"Gandalf the Grey"
-```
-- **character_name**: The exact name of your character sheet in FoundryVTT
-
-This command checks the Foundry instance before linking. If the character name is not found, it will fail.
-
-#### `/unlinkcharacter`
-Unlink your currently linked character.
-```
-/unlinkcharacter
-```
 
 #### `/mycharacter`
 View your own linked character information.

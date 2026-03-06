@@ -3,66 +3,6 @@ import { requiredConfig } from '../config.js';
 import { verifyFoundryCharacterName, fetchActorData } from '../api.js';
 import { getAllCharacterLinks, createOrUpdateCharacterLink, getCharacterLink, deleteCharacterLink, updateCharacterRawData } from '../models/character.js';
 
-export async function handleLinkCharacterCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-    const characterName = interaction.options.getString('character_name');
-    if (!characterName) {
-        await interaction.reply({ content: '❌ Character name is required.', ephemeral: true });
-        return;
-    }
-
-    const userId = interaction.user.id;
-    let verification;
-    try {
-        verification = await verifyFoundryCharacterName(characterName);
-    } catch (error) {
-        await interaction.reply({ content: `❌ Unable to verify character name against Foundry. ${(error as Error).message}`, ephemeral: true });
-        return;
-    }
-
-    if (!verification.ok) {
-        await interaction.reply({ content: `❌ Character "${characterName}" not found on the Foundry instance. Check the exact sheet name and try again.`, ephemeral: true });
-        return;
-    }
-
-    try {
-        const allLinks = await getAllCharacterLinks();
-        const existingClaim = allLinks.find(link => link.actorUuid === verification.uuid && link.discordUserId !== userId);
-
-        if (existingClaim) {
-            await interaction.reply({ content: `❌ Character "${characterName}" is already claimed by another user. Please choose a different character.`, ephemeral: true });
-            return;
-        }
-
-        const link = await createOrUpdateCharacterLink(userId, verification.uuid, characterName, interaction.user.username);
-
-        const embed = new EmbedBuilder()
-            .setColor('#00FF00')
-            .setTitle('✅ Character Linked')
-            .setDescription('Your FoundryVTT character has been linked!')
-            .addFields({ name: 'Character Name', value: characterName, inline: true }, { name: 'Actor UUID', value: verification.uuid, inline: true })
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [embed], ephemeral: true });
-    } catch (error) {
-        await interaction.reply({ content: `❌ Failed to link character: ${(error as Error).message}`, ephemeral: true });
-    }
-}
-
-export async function handleUnlinkCharacterCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-    const userId = interaction.user.id;
-    try {
-        const characterData = await getCharacterLink(userId);
-        if (!characterData) {
-            await interaction.reply({ content: "❌ You don't have a linked character.", ephemeral: true });
-            return;
-        }
-        await deleteCharacterLink(userId);
-        await interaction.reply({ content: `✅ Your character "${characterData.actorName}" has been unlinked.`, ephemeral: true });
-    } catch (error) {
-        await interaction.reply({ content: `❌ Failed to unlink character: ${(error as Error).message}`, ephemeral: true });
-    }
-}
-
 export async function handleMyCharacterCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     const userId = interaction.user.id;
     try {
@@ -80,7 +20,7 @@ export async function handleMyCharacterCommand(interaction: ChatInputCommandInte
                 { name: 'Actor UUID', value: characterData.actorUuid, inline: true },
                 { name: 'Linked Since', value: `<t:${Math.floor(new Date(characterData.createdAt).getTime() / 1000)}:R>`, inline: true }
             )
-            .setFooter({ text: 'Use /unlinkcharacter to remove this link' })
+            .setFooter({ text: '' })
             .setTimestamp();
         await interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (error) {
@@ -146,7 +86,7 @@ export async function handleAssignCharacterCommand(interaction: ChatInputCommand
         const allLinks = await getAllCharacterLinks();
         const existingClaim = allLinks.find(link => link.actorUuid === verification.uuid && link.discordUserId !== targetUserId);
         if (existingClaim) {
-            await interaction.reply({ content: `❌ Character "${characterName}" is already claimed by another user (<@${existingClaim.discordUserId}>). Unlink it first or choose a different character.`, ephemeral: true });
+            await interaction.reply({ content: `❌ Character "${characterName}" is already claimed by another user (<@${existingClaim.discordUserId}>).`, ephemeral: true });
             return;
         }
         const link = await createOrUpdateCharacterLink(targetUserId, verification.uuid, characterName, targetUser.username);
@@ -185,7 +125,7 @@ export async function handleInventoryCommand(interaction: ChatInputCommandIntera
     try {
         const characterData = await getCharacterLink(userId);
         if (!characterData) {
-            await interaction.editReply({ content: "❌ You don't have a linked character. Use `/linkcharacter` to link one first." });
+            await interaction.editReply({ content: "❌ You don't have a linked character. Ask an GM to link one for you." });
             return;
         }
         

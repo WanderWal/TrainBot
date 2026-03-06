@@ -134,9 +134,7 @@ npm start
 Test the bot commands to ensure everything works:
 
 ```
-/linkcharacter character_name:"Test Character"
 /mycharacter
-/unlinkcharacter
 ```
 
 ## Troubleshooting

@@ -2,7 +2,7 @@ import { Client, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { requiredConfig } from './config.js';
 import { commands } from './commands.js';
 import { handleTicketCommand, handleTicketSelection, handleCloseCommand } from './handlers/tickets.js';
-import { handleLinkCharacterCommand, handleUnlinkCharacterCommand, handleMyCharacterCommand, handleViewCharacterCommand, handleAssignCharacterCommand, handleInventoryCommand, handleSyncCharactersCommand } from './handlers/characters.js';
+import { handleMyCharacterCommand, handleViewCharacterCommand, handleAssignCharacterCommand, handleInventoryCommand, handleSyncCharactersCommand } from './handlers/characters.js';
 
 const client = new Client({
     intents: [
