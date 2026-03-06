@@ -189,9 +189,30 @@ export async function handleInventoryCommand(interaction: ChatInputCommandIntera
             return;
         }
         
-        const actorData = characterData.rawData?.data || characterData.rawData;
+        let actorData: any = null;
+        let isFallback = false;
+        try {
+            const fetchedActor = await fetchActorData(characterData.actorUuid);
+            if (fetchedActor && fetchedActor.data) {
+                actorData = fetchedActor.data;
+                // Sync the raw data to Directus asynchronously
+                updateCharacterRawData(characterData.id, fetchedActor).catch(err => {
+                    console.error(`Background sync failed for ${characterData.actorName}:`, err);
+                });
+            }
+        } catch (fetchError) {
+            // FoundryVTT might be offline, fallback to Directus raw_data
+            isFallback = true;
+            actorData = characterData.rawData?.data || characterData.rawData;
+        }
+
+        if (!actorData) {
+            actorData = characterData.rawData?.data || characterData.rawData;
+            isFallback = true;
+        }
+
         if (!actorData || !actorData.items) {
-            await interaction.editReply({ content: '❌ No inventory data found for your character in the database. Please wait for the next sync.' });
+            await interaction.editReply({ content: '❌ Could not retrieve inventory from FoundryVTT and no data was found in the database.' });
             return;
         }
         const items = Array.isArray(actorData.items) ? actorData.items : [];
