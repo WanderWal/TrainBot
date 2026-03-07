@@ -6,9 +6,10 @@ const ASKS_CHANNEL_ID = '1479867524517597490';
 
 export async function handleAskCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     try {
-        const interactables = await getAskableInteractables();
+        const channelId = interaction.channelId;
+        const interactables = await getAskableInteractables(channelId);
         if (interactables.length === 0) {
-            await interaction.reply({ content: '❌ No characters found.', ephemeral: true });
+            await interaction.reply({ content: '❌ No NPCs are available to talk to in this channel.', ephemeral: true });
             return;
         }
 

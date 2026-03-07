@@ -6,9 +6,24 @@ export interface InteractableRecord {
     name: string;
 }
 
-export async function getAskableInteractables(): Promise<InteractableRecord[]> {
-    // Filter interactables where related_actions contain an action named "Ask" (or "Talk" as fallback)
-    const url = `${config.directusUrl}/items/interactables?filter[_or][0][related_actions][actions_id][name][_eq]=Ask&filter[_or][1][related_actions][actions_id][name][_eq]=Talk&fields=id,name`;
+export async function getAskableInteractables(discordChannelId?: string): Promise<InteractableRecord[]> {
+    const filterOpts = {
+        _or: [
+            { related_actions: { actions_id: { name: { _eq: 'Ask' } } } },
+            { related_actions: { actions_id: { name: { _eq: 'Talk' } } } }
+        ]
+    };
+
+    const finalFilter = discordChannelId 
+        ? { _and: [ filterOpts, { channel: { discord_id: { _eq: discordChannelId } } } ] }
+        : filterOpts;
+
+    const query = new URLSearchParams({
+        fields: 'id,name',
+        filter: JSON.stringify(finalFilter)
+    });
+
+    const url = `${config.directusUrl}/items/interactables?${query.toString()}`;
     const headers: Record<string, string> = {};
     if (config.directusToken) {
         headers['Authorization'] = `Bearer ${config.directusToken}`;
