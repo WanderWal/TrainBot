@@ -1,13 +1,13 @@
 import { ChatInputCommandInteraction, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, StringSelectMenuInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ModalSubmitInteraction, ButtonInteraction, EmbedBuilder, ButtonBuilder, ButtonStyle, TextChannel, Client } from 'discord.js';
-import { getAllCharacters, getCharacterById } from '../models/character.js';
+import { getAskableInteractables, getInteractableById } from '../models/interactable.js';
 import { createAsk, getAsk, updateAskAnswer } from '../models/ask.js';
 
 const ASKS_CHANNEL_ID = '1479867524517597490';
 
 export async function handleAskCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     try {
-        const characters = await getAllCharacters();
-        if (characters.length === 0) {
+        const interactables = await getAskableInteractables();
+        if (interactables.length === 0) {
             await interaction.reply({ content: '❌ No characters found.', ephemeral: true });
             return;
         }
@@ -16,10 +16,10 @@ export async function handleAskCommand(interaction: ChatInputCommandInteraction)
             .setCustomId('ask_npc_select')
             .setPlaceholder('Select an NPC to ask...')
             .addOptions(
-                characters.slice(0, 25).map(char => 
+                interactables.slice(0, 25).map(npc => 
                     new StringSelectMenuOptionBuilder()
-                        .setLabel(char.name)
-                        .setValue(char.id.toString())
+                        .setLabel(npc.name)
+                        .setValue(npc.id.toString())
                 )
             );
 
@@ -64,25 +64,25 @@ export async function handleAskNpcSelection(interaction: StringSelectMenuInterac
 }
 
 export async function handleAskModalSubmit(interaction: ModalSubmitInteraction, client: Client): Promise<void> {
-    const characterIdStr = interaction.customId.replace('ask_modal_', '');
-    const characterId = parseInt(characterIdStr, 10);
+    const interactableIdStr = interaction.customId.replace('ask_modal_', '');
+    const interactableId = parseInt(interactableIdStr, 10);
     const question = interaction.fields.getTextInputValue('question_input');
 
     await interaction.deferReply({ ephemeral: true });
 
     try {
-        const character = await getCharacterById(characterId);
-        const charName = character ? character.name : `Unknown NPC (${characterId})`;
+        const interactable = await getInteractableById(interactableId);
+        const npcName = interactable ? interactable.name : `Unknown NPC (${interactableId})`;
 
         const channelId = interaction.channelId || '';
 
-        const askRecord = await createAsk(interaction.user.id, channelId, characterId, question);
+        const askRecord = await createAsk(interaction.user.id, channelId, interactableId, question);
 
         // Send to admin channel
         const asksChannel = await client.channels.fetch(ASKS_CHANNEL_ID) as TextChannel;
         if (asksChannel) {
             const embed = new EmbedBuilder()
-                .setTitle(`New Question for ${charName}`)
+                .setTitle(`New Question for ${npcName}`)
                 .setDescription(`**Player:** <@${interaction.user.id}>\n**Question:**\n${question}`)
                 .setColor('#FFFF00')
                 .setFooter({ text: `Ask ID: ${askRecord.id}` })
@@ -100,7 +100,7 @@ export async function handleAskModalSubmit(interaction: ModalSubmitInteraction, 
             console.error(`Admin asks channel ${ASKS_CHANNEL_ID} not found.`);
         }
 
-        await interaction.editReply({ content: `✅ Your question has been asked to **${charName}**. They will reply in this channel soon!` });
+        await interaction.editReply({ content: `✅ Your question has been asked to **${npcName}**. They will reply in this channel soon!` });
 
         // Try to delete the original message with the select menu
         try {
@@ -151,16 +151,16 @@ export async function handleAskReplyModalSubmit(interaction: ModalSubmitInteract
         // Update record
         const updatedAsk = await updateAskAnswer(askId, answer);
 
-        // Fetch character for name
-        const character = await getCharacterById(askRecord.character_id);
-        const charName = character ? character.name : 'Unknown NPC';
+        // Fetch interactable for name
+        const interactable = await getInteractableById(askRecord.interactable_id);
+        const npcName = interactable ? interactable.name : 'Unknown NPC';
 
         // Send to the original channel
         if (askRecord.channel_id) {
             const originalChannel = await client.channels.fetch(askRecord.channel_id) as TextChannel;
             if (originalChannel) {
                 const embed = new EmbedBuilder()
-                    .setTitle(`Response from ${charName}`)
+                    .setTitle(`Response from ${npcName}`)
                     .setDescription(`**Question:**\n${askRecord.ask}\n\n**Reply:**\n${answer}`)
                     .setColor('#00FF00')
                     .setTimestamp();
@@ -176,7 +176,7 @@ export async function handleAskReplyModalSubmit(interaction: ModalSubmitInteract
             const user = await client.users.fetch(askRecord.discord_id);
             if (user) {
                 const embed = new EmbedBuilder()
-                    .setTitle(`Response from ${charName}`)
+                    .setTitle(`Response from ${npcName}`)
                     .setDescription(`**Your Question:**\n${askRecord.ask}\n\n**Reply:**\n${answer}`)
                     .setColor('#00FF00')
                     .setTimestamp();

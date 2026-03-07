@@ -5,13 +5,13 @@ export interface AskRecord {
     id: number;
     discord_id: string;
     channel_id: string;
-    character_id: number;
+    interactable_id: number;
     ask: string;
     answer?: string;
     date_created?: string;
 }
 
-export async function createAsk(discord_id: string, channel_id: string, character_id: number, ask: string): Promise<AskRecord> {
+export async function createAsk(discord_id: string, channel_id: string, interactable_id: number, ask: string): Promise<AskRecord> {
     const url = `${config.directusUrl}/items/asks`;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (config.directusToken) {
@@ -21,7 +21,7 @@ export async function createAsk(discord_id: string, channel_id: string, characte
     const response = await fetchFn(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ discord_id, channel_id, character_id, ask })
+        body: JSON.stringify({ discord_id, channel_id, interactable_id, ask })
     });
 
     if (!response.ok) {
