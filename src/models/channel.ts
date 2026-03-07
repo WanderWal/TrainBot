@@ -2,7 +2,7 @@ import { fetchFn } from '../api.js';
 import { config } from '../config.js';
 
 export async function addChannelToDirectus(name: string, discord_id: string): Promise<any> {
-    const url = `${config.directusUrl}/items/Channels`;
+    const url = `${config.directusUrl}/items/channels`;
     const headers: Record<string, string> = {
         'Content-Type': 'application/json'
     };
