@@ -8,6 +8,12 @@ const ASKS_CHANNEL_ID = '1479867524517597490';
 
 export async function handleAskCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     try {
+        const characterLink = await getCharacterLink(interaction.user.id);
+        if (!characterLink) {
+            await interaction.reply({ content: '❌ You need a linked character to ask questions.', ephemeral: true });
+            return;
+        }
+
         const channelId = interaction.channelId;
         const interactables = await getAskableInteractables(channelId);
         if (interactables.length === 0) {
