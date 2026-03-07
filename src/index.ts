@@ -4,6 +4,7 @@ import { commands } from './commands.js';
 import { handleTicketCommand, handleTicketSelection, handleCloseCommand } from './handlers/tickets.js';
 import { handleMyCharacterCommand, handleViewCharacterCommand, handleAssignCharacterCommand, handleInventoryCommand, handleSyncCharactersCommand } from './handlers/characters.js';
 import { handleAddChannelCommand } from './handlers/channels.js';
+import { handleAskCommand, handleAskNpcSelection, handleAskModalSubmit, handleAskReplyButton, handleAskReplyModalSubmit } from './handlers/asks.js';
 
 const client = new Client({
     intents: [
@@ -41,10 +42,29 @@ client.on(Events.InteractionCreate, async interaction => {
         else if (commandName === 'assigncharacter') await handleAssignCharacterCommand(interaction);
         else if (commandName === 'synccharacters') await handleSyncCharactersCommand(interaction);
         else if (commandName === 'addchannel') await handleAddChannelCommand(interaction);
+        else if (commandName === 'ask') await handleAskCommand(interaction);
     }
 
-    if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_type') {
-        await handleTicketSelection(interaction, client);
+    if (interaction.isStringSelectMenu()) {
+        if (interaction.customId === 'ticket_type') {
+            await handleTicketSelection(interaction, client);
+        } else if (interaction.customId === 'ask_npc_select') {
+            await handleAskNpcSelection(interaction);
+        }
+    }
+
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId.startsWith('ask_modal_')) {
+            await handleAskModalSubmit(interaction, client);
+        } else if (interaction.customId.startsWith('ask_reply_modal_')) {
+            await handleAskReplyModalSubmit(interaction, client);
+        }
+    }
+
+    if (interaction.isButton()) {
+        if (interaction.customId.startsWith('ask_reply_')) {
+            await handleAskReplyButton(interaction);
+        }
     }
 });
 

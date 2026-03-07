@@ -27,5 +27,10 @@ export const commands = [
         name: 'addchannel',
         description: '[Support] Add this Discord channel to Directus',
         options: []
+    },
+    {
+        name: 'ask',
+        description: 'Ask a question to an NPC',
+        options: []
     }
 ];

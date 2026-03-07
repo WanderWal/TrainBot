@@ -143,3 +143,45 @@ export async function updateCharacterRawData(characterId: number, rawData: any):
         throw new Error(`Failed to update character raw data: ${text || response.statusText}`);
     }
 }
+
+export interface CharacterRecord {
+    id: number;
+    name: string;
+}
+
+export async function getAllCharacters(): Promise<CharacterRecord[]> {
+    const url = `${config.directusUrl}/items/characters?fields=id,name`;
+    const headers: Record<string, string> = {};
+    if (config.directusToken) {
+        headers['Authorization'] = `Bearer ${config.directusToken}`;
+    }
+
+    const response = await fetchFn(url, { headers });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Failed to get characters: ${text || response.statusText}`);
+    }
+
+    const result = await response.json() as { data: CharacterRecord[] };
+    return result.data || [];
+}
+
+export async function getCharacterById(id: number): Promise<CharacterRecord | null> {
+    const url = `${config.directusUrl}/items/characters/${id}?fields=id,name`;
+    const headers: Record<string, string> = {};
+    if (config.directusToken) {
+        headers['Authorization'] = `Bearer ${config.directusToken}`;
+    }
+
+    const response = await fetchFn(url, { headers });
+
+    if (!response.ok) {
+        if (response.status === 404) return null;
+        const text = await response.text().catch(() => '');
+        throw new Error(`Failed to get character: ${text || response.statusText}`);
+    }
+
+    const result = await response.json() as { data: CharacterRecord };
+    return result.data;
+}
