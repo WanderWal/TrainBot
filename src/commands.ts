@@ -22,5 +22,10 @@ export const commands = [
         name: 'synccharacters',
         description: '[Support] Sync all characters raw data from FoundryVTT to the database',
         options: []
+    },
+    {
+        name: 'addchannel',
+        description: '[Support] Add this Discord channel to Directus',
+        options: []
     }
 ];

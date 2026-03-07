@@ -3,6 +3,7 @@ import { requiredConfig } from './config.js';
 import { commands } from './commands.js';
 import { handleTicketCommand, handleTicketSelection, handleCloseCommand } from './handlers/tickets.js';
 import { handleMyCharacterCommand, handleViewCharacterCommand, handleAssignCharacterCommand, handleInventoryCommand, handleSyncCharactersCommand } from './handlers/characters.js';
+import { handleAddChannelCommand } from './handlers/channels.js';
 
 const client = new Client({
     intents: [
@@ -39,6 +40,7 @@ client.on(Events.InteractionCreate, async interaction => {
         else if (commandName === 'inventory') await handleInventoryCommand(interaction);
         else if (commandName === 'assigncharacter') await handleAssignCharacterCommand(interaction);
         else if (commandName === 'synccharacters') await handleSyncCharactersCommand(interaction);
+        else if (commandName === 'addchannel') await handleAddChannelCommand(interaction);
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_type') {
