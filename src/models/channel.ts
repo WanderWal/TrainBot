@@ -36,3 +36,22 @@ export async function addChannelToDirectus(name: string, discord_id: string): Pr
 
     return await res.json();
 }
+
+export async function getChannelByDiscordId(discord_id: string): Promise<{ id: number; name: string } | null> {
+    const url = `${config.directusUrl}/items/channels?filter[discord_id][_eq]=${discord_id}&fields=id,name`;
+    const headers: Record<string, string> = {};
+    if (config.directusToken) {
+        headers['Authorization'] = `Bearer ${config.directusToken}`;
+    }
+
+    const res = await fetchFn(url, { headers });
+
+    if (!res.ok) {
+        return null;
+    }
+
+    const data = await res.json() as { data: any[] };
+    if (!data.data || data.data.length === 0) return null;
+
+    return data.data[0];
+}

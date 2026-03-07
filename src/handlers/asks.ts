@@ -1,6 +1,8 @@
 import { ChatInputCommandInteraction, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, StringSelectMenuInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ModalSubmitInteraction, ButtonInteraction, EmbedBuilder, ButtonBuilder, ButtonStyle, TextChannel, Client } from 'discord.js';
 import { getAskableInteractables, getInteractableById } from '../models/interactable.js';
 import { createAsk, getAsk, updateAskAnswer } from '../models/ask.js';
+import { getCharacterLink, getCharacterById, getAllCharacters } from '../models/character.js';
+import { getChannelByDiscordId } from '../models/channel.js';
 
 const ASKS_CHANNEL_ID = '1479867524517597490';
 
@@ -75,30 +77,44 @@ export async function handleAskModalSubmit(interaction: ModalSubmitInteraction, 
         const interactable = await getInteractableById(interactableId);
         const npcName = interactable ? interactable.name : `Unknown NPC (${interactableId})`;
 
-        const channelId = interaction.channelId || '';
+        const discordChannelId = interaction.channelId || '';
+        
+        let channelRecordId: number | undefined = undefined;
+        if (discordChannelId) {
+            const channelRec = await getChannelByDiscordId(discordChannelId);
+            if (channelRec) channelRecordId = channelRec.id;
+        }
 
-        const askRecord = await createAsk(interaction.user.id, channelId, interactableId, question);
+        let characterRecordId: number | undefined = undefined;
+        const charLink = await getCharacterLink(interaction.user.id);
+        if (charLink) characterRecordId = charLink.id;
+
+        const askRecord = await createAsk(characterRecordId, channelRecordId, interactableId, question);
 
         // Send to admin channel
-        const asksChannel = await client.channels.fetch(ASKS_CHANNEL_ID) as TextChannel;
-        if (asksChannel) {
-            const embed = new EmbedBuilder()
-                .setTitle(`New Question for ${npcName}`)
-                .setDescription(`**Player:** <@${interaction.user.id}>\n**Question:**\n${question}`)
-                .setColor('#FFFF00')
-                .setFooter({ text: `Ask ID: ${askRecord.id}` })
-                .setTimestamp();
+        try {
+            const asksChannel = await client.channels.fetch(ASKS_CHANNEL_ID) as TextChannel;
+            if (asksChannel) {
+                const embed = new EmbedBuilder()
+                    .setTitle(`New Question for ${npcName}`)
+                    .setDescription(`**Player:** <@${interaction.user.id}>\n**Question:**\n${question}`)
+                    .setColor('#FFFF00')
+                    .setFooter({ text: `Ask ID: ${askRecord.id}` })
+                    .setTimestamp();
 
-            const replyBtn = new ButtonBuilder()
-                .setCustomId(`ask_reply_${askRecord.id}`)
-                .setLabel('Reply')
-                .setStyle(ButtonStyle.Primary);
+                const replyBtn = new ButtonBuilder()
+                    .setCustomId(`ask_reply_${askRecord.id}`)
+                    .setLabel('Reply')
+                    .setStyle(ButtonStyle.Primary);
 
-            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(replyBtn);
+                const row = new ActionRowBuilder<ButtonBuilder>().addComponents(replyBtn);
 
-            await asksChannel.send({ embeds: [embed], components: [row] });
-        } else {
-            console.error(`Admin asks channel ${ASKS_CHANNEL_ID} not found.`);
+                await asksChannel.send({ embeds: [embed], components: [row] });
+            } else {
+                console.error(`Admin asks channel ${ASKS_CHANNEL_ID} not found.`);
+            }
+        } catch (adminErr) {
+            console.error(`Failed to send to admin channel (Missing Access or invalid ID?):`, adminErr);
         }
 
         await interaction.editReply({ content: `✅ Your question has been asked to **${npcName}**. They will reply in this channel soon!` });
@@ -152,13 +168,13 @@ export async function handleAskReplyModalSubmit(interaction: ModalSubmitInteract
         // Update record
         const updatedAsk = await updateAskAnswer(askId, answer);
 
-        // Fetch interactable for name
-        const interactable = await getInteractableById(askRecord.interactable_id);
-        const npcName = interactable ? interactable.name : 'Unknown NPC';
+        const npcName = askRecord.interactable?.name || 'Unknown NPC';
+        const targetChannelDiscordId = askRecord.channel?.discord_id;
+        const targetUserDiscordId = askRecord.character?.player_id?.discord_id;
 
         // Send to the original channel
-        if (askRecord.channel_id) {
-            const originalChannel = await client.channels.fetch(askRecord.channel_id) as TextChannel;
+        if (targetChannelDiscordId) {
+            const originalChannel = await client.channels.fetch(targetChannelDiscordId) as TextChannel;
             if (originalChannel) {
                 const embed = new EmbedBuilder()
                     .setTitle(`Response from ${npcName}`)
@@ -166,15 +182,16 @@ export async function handleAskReplyModalSubmit(interaction: ModalSubmitInteract
                     .setColor('#00FF00')
                     .setTimestamp();
                 
-                await originalChannel.send({ content: `<@${askRecord.discord_id}>`, embeds: [embed] }).catch(err => {
-                    console.error(`Could not send message to channel ${askRecord.channel_id}:`, err);
+                const pingContent = targetUserDiscordId ? `<@${targetUserDiscordId}>` : '';
+                await originalChannel.send({ content: pingContent, embeds: [embed] }).catch(err => {
+                    console.error(`Could not send message to channel ${targetChannelDiscordId}:`, err);
                     throw new Error('Bot lacks permission to send messages in the original channel.');
                 });
             }
-        } else {
-            console.error(`No channel_id saved for ask ${askId}`);
-            // Fallback to DM if possible (for backward compatibility if old asks exist)
-            const user = await client.users.fetch(askRecord.discord_id);
+        } else if (targetUserDiscordId) {
+            console.error(`No channel saved for ask ${askId}`);
+            // Fallback to DM
+            const user = await client.users.fetch(targetUserDiscordId);
             if (user) {
                 const embed = new EmbedBuilder()
                     .setTitle(`Response from ${npcName}`)

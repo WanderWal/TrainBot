@@ -3,25 +3,32 @@ import { fetchFn } from '../api.js';
 
 export interface AskRecord {
     id: number;
-    discord_id: string;
-    channel_id: string;
-    interactable_id: number;
+    character?: any;
+    channel?: any;
+    interactable: any;
     ask: string;
     answer?: string;
     date_created?: string;
 }
 
-export async function createAsk(discord_id: string, channel_id: string, interactable_id: number, ask: string): Promise<AskRecord> {
+export async function createAsk(character_id: number | undefined, channel_id: number | undefined, interactable_id: number, ask: string): Promise<AskRecord> {
     const url = `${config.directusUrl}/items/asks`;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (config.directusToken) {
         headers['Authorization'] = `Bearer ${config.directusToken}`;
     }
 
+    const payload: any = {
+        interactable: interactable_id,
+        ask: ask
+    };
+    if (character_id !== undefined) payload.character = character_id;
+    if (channel_id !== undefined) payload.channel = channel_id;
+
     const response = await fetchFn(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ discord_id, channel_id, interactable_id, ask })
+        body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -34,7 +41,7 @@ export async function createAsk(discord_id: string, channel_id: string, interact
 }
 
 export async function getAsk(id: number): Promise<AskRecord | null> {
-    const url = `${config.directusUrl}/items/asks/${id}`;
+    const url = `${config.directusUrl}/items/asks/${id}?fields=*,channel.discord_id,character.player_id.discord_id,interactable.name`;
     const headers: Record<string, string> = {};
     if (config.directusToken) {
         headers['Authorization'] = `Bearer ${config.directusToken}`;
