@@ -102,18 +102,6 @@ export async function handleAssignCharacterCommand(interaction: ChatInputCommand
             )
             .setTimestamp();
         await interaction.reply({ embeds: [embed] });
-        try {
-            const dmEmbed = new EmbedBuilder()
-                .setColor('#00FF00')
-                .setTitle('📜 Character Assigned')
-                .setDescription(`A FoundryVTT character has been assigned to you by ${interaction.user.tag}!`)
-                .addFields({ name: 'Character Name', value: characterName, inline: true })
-                .setFooter({ text: 'Use /mycharacter to view your linked character' })
-                .setTimestamp();
-            await targetUser.send({ embeds: [dmEmbed] });
-        } catch (dmError) {
-            console.log(`Could not DM user ${targetUser.tag}:`, dmError);
-        }
     } catch (error) {
         await interaction.reply({ content: `❌ Failed to assign character: ${(error as Error).message}`, ephemeral: true });
     }
